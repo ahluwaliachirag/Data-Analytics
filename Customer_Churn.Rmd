@@ -1,0 +1,156 @@
+---
+title: "Customer_Churn"
+author: "Chirag Ahluwalia"
+date: "3/24/2020"
+output:
+  html_document: default
+  word_document: default
+---
+
+#### Read the Data 
+
+```{r}
+library(tidyverse)
+#library(lubridate)
+library(funModeling)
+```
+
+#### Read the Data 
+
+```{r}
+library(readxl) # fast excel reader
+churn <- read_excel("Churn.xlsx", sheet = "Case Data")
+```
+
+
+#### Show the raw data
+
+```{r}
+#library(knitr) # the package that renders R markdown and has some good additional functionality
+#kable(churn)
+glimpse(churn)
+```
+
+
+#### Checking Missing Values 
+
+
+```{r}
+
+dim(churn)
+str(churn)
+summary(churn)
+
+# Checking Missing Values 
+library(VIM)
+aggr_plot = aggr(churn, 
+                 col = c("red", "blue"), 
+                 numbers = TRUE, 
+                 prop = TRUE, 
+                 sortVars = TRUE, 
+                 labels = names(churn), 
+                 cex.axis = 1, 
+                 gap = 0, 
+                 ylab = c("Histogram of missing data", "Pattern"))
+
+# This shows that there are no missing data in our Dataset, Good Start!
+
+```
+
+#### Handling the Age variables for the initial Hypothesis  
+
+```{r}
+
+churn$`Customer Age (in months)` <- factor(churn$`Customer Age (in months)`)
+levels(churn$`Customer Age (in months)`) = list("Less than 6 Months" = c(0:5),
+                                        "Btw 6 to 14 Months" = c(6:14), 
+                                        "More than 14 Months" = c(15:67))
+library(Hmisc)
+describe(churn$`Customer Age (in months)`)
+
+```
+
+#### Handling the Dependent Variable  
+
+```{r}
+
+# converting all the variables into factor which have less than 4 unique values 
+
+col_names <- sapply(churn, function(col) length(unique(col)) < 4)
+churn[ , col_names] <- lapply(churn[ , col_names] , factor)
+
+
+library(Hmisc)
+describe(churn$`Churn (1 = Yes, 0 = No)`)
+
+```
+
+
+## Question1  
+
+Let us check Wall's belief about the dependence of churn rates on customer age supported by the data? Let us try to do it through Vistualisation 
+
+```{r}
+png(filename= "Age Over Churn Rate.png", 
+    width = 888,
+    height = 571)
+
+ggplot(data = churn, mapping = aes(x =`Customer Age (in months)`)) +
+geom_bar(color="black",fill="orange")+
+facet_wrap(~ `Churn (1 = Yes, 0 = No)`)+
+ggtitle("Vistualising Age Categories over Churn")+
+  xlab("Customer Age - in months")+
+  theme_bw()
+
+xtabs(~`Churn (1 = Yes, 0 = No)` + `Customer Age (in months)`, data = churn)
+
+library(Hmisc)
+describe(churn$`Customer Age (in months)`)
+
+# Churn - Yes(1) - means that the Customer left the application and No(0) - means that the customer is still using the application 
+
+# Now we see that wall's belief is correct for people who are still using the application; 
+# People who have been using the application for more than 14 months are still likely to stay with us 
+
+# However, People who might leave us are from the age range of 6 to 14 months, which was the correct assessment of Walls. However, people who have been using the system for more than 14 months are leaving more than that people who recently started using the system. 
+
+# This is a potential problem, as it negates our Hypothesis
+
+
+```
+
+
+## Let us check other variables   
+
+
+```{r}
+
+#View(churn)
+
+str(churn)
+
+``` 
+
+## Question 2   
+
+Let us build a logistic regression Model 
+
+```{r}
+
+#install.packages("aod")
+library(aod)
+
+mylogit <- glm( `Churn (1 = Yes, 0 = No)`~.-ID, data = churn, family = "binomial")
+summary(mylogit)
+
+exp(coef(mylogit))
+exp(cbind(OR = coef(mylogit), confint(mylogit)))
+
+```
+
+
+
+
+
+
+
